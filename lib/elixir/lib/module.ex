@@ -1107,6 +1107,20 @@ defmodule Module do
   end
 
   @doc false
+  # Used internally to check impl usage.
+  # This function is private and must be used only internally.
+  def check_impl(_env, _kind, _name, _args, _guards, _body) do
+    # :elixir_errors.warn env.module
+    # :elixir_errors.warn data_table_for(module)
+    # :elixir_errors.warn length(args)
+    # :elixir_errors.warn {name, arity}
+
+    # {line, doc} = get_doc_info(table, env)
+
+    :ok
+  end
+
+  @doc false
   # Used internally to compile types.
   # This function is private and must be used only internally.
   def store_typespec(module, key, value) when is_atom(module) and is_atom(key) do

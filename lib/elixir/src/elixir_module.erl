@@ -35,6 +35,10 @@ delete_doc(#{module := Module}, _, _, _, _, _) ->
   ets:delete(data_table(Module), doc),
   ok.
 
+delete_impl(#{module := Module}, _, _, _, _, _) ->
+  % TODO: What to do here?
+  ok.
+
 %% Compilation hook
 
 compile(Module, Block, Vars, #{line := Line} = Env) when is_atom(Module) ->
@@ -155,11 +159,20 @@ build(Line, File, Module, Lexical) ->
   Ref  = elixir_code_server:call({defmodule, self(),
                                  {Module, Data, Defs, Line, File}}),
 
-  OnDefinition =
-    case elixir_compiler:get_opt(docs) of
-      true -> [{'Elixir.Module', compile_doc}];
-      _    -> [{elixir_module, delete_doc}]
-    end,
+  DocsOnDefinition =
+      case elixir_compiler:get_opt(docs) of
+        true -> [{'Elixir.Module', compile_doc}];
+        _    -> [{elixir_module, delete_doc}]
+      end,
+
+  % ImplOnDefinition =
+  %     case elixir_compiler:get_opt(internal) of
+  %       true -> [{'Elixir.Module', check_impl}];
+  %       _    -> [{elixir_module, delete_impl}]
+  %     end,
+
+  % OnDefinition = ImplOnDefinition ++ DocsOnDefinition,
+  OnDefinition = DocsOnDefinition,
 
   ets:insert(Data, [
     % {Key, Value, Accumulate?, UnreadLine}

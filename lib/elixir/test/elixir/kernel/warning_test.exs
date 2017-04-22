@@ -807,20 +807,20 @@ defmodule Kernel.WarningTest do
     purge Sample
   end
 
-  # test "impl with callback name not in behaviour" do
-  #   assert capture_err(fn ->
-  #     Code.eval_string """
-  #     defmodule Sample do
-  #       @behaviour Kernel.WarningTest.FooBehaviour
+  test "impl with callback name not in behaviour" do
+    assert capture_err(fn ->
+      Code.eval_string """
+      defmodule Sample do
+        @behaviour Kernel.WarningTest.FooBehaviour
 
-  #       @impl Kernel.WarningTest.FooBehaviour
-  #       def baz(), do: :ok
-  #     end
-  #     """
-  #   end) =~ "module attribute @impl was set for function baz/0 but behaviour Kernel.WarningTest.FooBehaviour does not define this callback"
-  # after
-  #   purge Sample
-  # end
+        @impl Kernel.WarningTest.FooBehaviour
+        def baz(), do: :ok
+      end
+      """
+    end) =~ "module attribute @impl was set for function baz/0 but behaviour Kernel.WarningTest.FooBehaviour does not define this callback"
+  after
+    purge Sample
+  end
 
   # test "impl with correct callback name but incorrect callback arity" do
   #   assert capture_err(fn ->
