@@ -4,7 +4,15 @@ Here we document the syntax constructs in Elixir. We explore the base language c
 
 ## The Elixir AST
 
-Elixir syntax was designed to have a straight-forward conversion to an abstract syntax tree (AST). Therefore the best way to study Elixir syntax constructs is to also analyze how they are represented at the AST level.
+Elixir syntax was designed to have a straight-forward conversion to an abstract syntax tree (AST). Elixir's AST is a regular Elixir data-structure composed of the following elements:
+
+  * atoms - such as `:foo`
+  * integers - such as `42`
+  * floats - such as `13.1`
+  * strings - such as `"hello"`
+  * lists - such as `[1, 2, 3]`
+  * tuples with two elements - such as `{"hello", :world}`
+  * tuples with three elements, representing calls or variables, as explained next
 
 The building block of Elixir's AST is a call, such as:
 
@@ -12,13 +20,13 @@ The building block of Elixir's AST is a call, such as:
 sum(arg1, arg2, arg3)
 ```
 
-which is represented as:
+which is represented as a tuple with three elements:
 
 ```elixir
 {:sum, meta, args}
 ```
 
-where the first element is an atom (or another tuple), the second element is a list of two-item tuples with metadata (such as line numbers) and the third is a list of arguments.
+the first element is an atom (or another tuple), the second element is a list of two-item tuples with metadata (such as line numbers) and the third is a list of arguments.
 
 We can retrieve the AST for any Elixir expression by calling `quote`:
 
@@ -29,7 +37,7 @@ end
 #=> {:sum, [], []}
 ```
 
-Variables are also a basic construct:
+Variables are also represented using a tuple with three elements and a combination of lists and atoms, for example:
 
 ```elixir
 quote do
@@ -40,24 +48,53 @@ end
 
 You can see that variables are also represented with a tuple, except the third element is an atom expressing the variable context.
 
-Elixir also has quoted literals, which are values that, when quoted, return themselves. They are:
+Over the next section, we will explore many of Elixir syntax constructs alongside their AST representation.
 
-  * atoms - such as `:foo`
-  * integers - such as `42`
-  * floats - such as `13.1`
-  * strings - such as `"hello"`
-  * lists - such as `[1, 2, 3]`
-  * tuples with two elements - such as `{"hello", :world}`
+### Numbers
 
-All syntax constructs in the Elixir language are expressed with the terms above.
+Integers (`1234`) and floats (`123.4`) in Elixir are represented as a sequence of digits that may be separated by underscore for readability purposes, such as `1_000_000`. Integers never contain a dot (`.`) in their representation. Floats contain a dot and at least one other digit after the dot. Floats also support the scientific format, such as `123.4e10` or `123.4E10`.
 
-## Base constructs
+Numbers are always represented as themselves in the AST:
 
-Below follow the constructs in the Elixir syntax and their AST representation. We will skip the quoted literals just introduced above.
+```elixir
+quote do
+  1
+end
+#=> 1
+```
+
+### Atoms
+
+Atoms in Elixir start with a colon (`:`) which must be followed by any ascii letter and an optional sequence of ascii letters, numbers or underscores. Valid examples are `:foo`, `:FOO` and `:foo_42`. Atoms may also have a single `@` on them, such as: `:foo@bar42`.
+
+If the colon is followed by a double- or single-quote, the atom can be made of any latin character up to OTP 19 or of any unicode character from OTP 20 onwards, such as `:"++olá++"`.
+
+Atoms are always represented as themselves in the AST:
+
+```elixir
+quote do
+  :foo
+end
+#=> :foo
+```
+
+### Strings
+
+Strings in Elixir are written between double-quotes, such as `"foo"`. Any double-quote inside the string must be escaped with `\`. Strings support Unicode characters and are stored in UTF-8 encoding.
+
+Strings are always represented as themselves in the AST.
+
+### Charlists
+
+Charlists in Elixir are written in single-quotes, such as `'foo'`. Any single-quote inside the string must be escaped with `\`. Charlists are a list of integers, each integer representing a Unicode character.
+
+Charlists are always represented as themselves in the AST.
 
 ### Variables
 
-As introduced above:
+Variables must start with lowercase ascii character which may be followed by any ascii letter, number or underscore. Variables may end in `?` or `!`. [Elixir's naming conventions](naming-conventions.html) proposes variables to be in `snake_case` format.
+
+Variables are represented by three-element tuples:
 
 ```elixir
 quote do
@@ -68,7 +105,9 @@ end
 
 ### Non-qualified calls
 
-As introduced above:
+Non-qualified calls, such as `add(1, 2)`, must start with lowercase characters which may be followed by any ascii letter, number or underscore. Calls may end in `?` or `!`. [Elixir's naming conventions](naming-conventions.html) proposes function names to be in `snake_case` format.
+
+Non-qualified calls are represented by three-element tuples:
 
 ```elixir
 quote do
@@ -79,7 +118,7 @@ end
 
 ### Operators
 
-Operators are expanded to calls.
+Operators are treated as non-qualified calls:
 
 ```elixir
 quote do
@@ -97,7 +136,7 @@ end
 #=> {{:., [], [{:foo, [], Elixir}, :bar]}, [], [1, 2, 3]}
 ```
 
-Calling anonymous functions uses the dot in the AST with a single argument, mirroring the fact the second argument is "missing":
+Calling anonymous functions uses the dot in the AST with a single argument, mirroring the fact the function name is "missing" from right side of the dot:
 
 ```elixir
 quote do
@@ -108,13 +147,66 @@ end
 
 Many other Elixir constructs, such as `=`, `when`, `&` and `@` are simply treated as operators. See [the Operators page](operators.html) for a full reference.
 
-### Data-structures
+### Aliases
 
-Any data-structure in Elixir that is not a literal also has its own AST representation.
+Aliases are constructs that expands to atoms at compile-time. The alias `String` expands to the atom `:"Elixir.String"`. Aliases must start with an uppercase character which may be followed by any ascii letter, number, or underscore. [Elixir's naming conventions](naming-conventions.html) propose aliases to be in `CamelCase` format.
 
-Tuples, except the ones with two elements, have their own representation:
+Aliases are represented by an `__aliases__` call with each segment separated by dot as an argument:
 
 ```elixir
+quote do
+  Foo.Bar.Baz
+end
+#=> {:__aliases__, [], [:Foo, :Bar, :Baz]}
+
+quote do
+  __MODULE__.Bar.Baz
+end
+#=> {:__aliases__, [], [{:__MODULE__, [], Elixir}, :Bar, :Baz]}
+```
+
+All arguments, except the first, will be atoms.
+
+### Qualified calls (remote calls)
+
+Qualified calls, such as `Math.add(1, 2)`, must start with lowercase characters which may be followed by any ascii letter, number or underscore. Calls may end in `?` or `!`. [Elixir's naming conventions](naming-conventions.html) propose function names to be in `snake_case` format.
+
+For qualified calls, Elixir also allows the function name to be written between double- or single-quotes, allowing calls such as `Math."++add++"(1, 2)`. Operators can be used as qualified calls without a need for quote, such as `Kernel.+(1, 2)`.
+
+Qualified calls are represented as a tuple with three elements at the AST where the first element is the a tuple reprsenting the dot:
+
+```elixir
+quote do
+  :foo.bar(1, 2)
+end
+#=> {{:., [], [:foo, :bar]}, [], [1, 2]}
+```
+
+### Data structures
+
+Data structures such as lists, tuples, and binaries are marked respectively by the delimiters `[...]`, `{...}`, and `<<...>>`. Each element is separated by comma. A trailing comma is also allowed, such as in `[1, 2, 3,]`.
+
+Maps use the `%{...}` notation and each key-value is given by pairs marked with `=>`, such as `%{"hello" => 1, 2 => "world"}`.
+
+Both maps and keyword lists supports a notation for when the keys are atoms. Keywords are written using the same rules as atoms, except the colon character `:` is moved to the end, such as `%{hello: "world"}` and `[foo: :bar]`. This notation is a syntax sugar that emits the same AST representation. It will be explained in later sections.
+
+Lists are represented as themselves in the AST:
+
+```elixir
+quote do
+  [1, 2, 3]
+end
+#=> [1, 2, 3]
+```
+
+Tuples have their own representation, except for two-element tuples, which are represented as themselves:
+
+```elixir
+quote do
+  {1, 2}
+end
+#=> {1, 2}
+
 quote do
   {1, 2, 3}
 end
@@ -130,7 +222,7 @@ end
 #=> {:<<>>, [], [1, 2, 3]}
 ```
 
-The same apply to maps except each pair is treated as a list of tuples with two elements:
+The same applies to maps except pairs a treated as a list of tuples with two elements:
 
 ```elixir
 quote do
@@ -141,7 +233,7 @@ end
 
 ### Blocks
 
-Blocks are multiple Elixir expressions separated by new lines. They are expanded to a `__block__` call with each line as its own argument:
+Blocks are multiple Elixir expressions separated by newlines. They are expanded to a `__block__` call with each line as a separate argument:
 
 ```elixir
 quote do
@@ -158,24 +250,6 @@ Expressions in Elixir are separated by newlines or semi-colons:
 quote do 1; 2; 3; end
 #=> {:__block__, [], [1, 2, 3]}
 ```
-
-### Aliases
-
-Aliases are compile-time constructs that expand to atoms. They are represented by an `__aliases__` call with each segment separated by dot as an argument:
-
-```elixir
-quote do
-  Foo.Bar.Baz
-end
-#=> {:__aliases__, [], [:Foo, :Bar, :Baz]}
-
-quote do
-  __MODULE__.Bar.Baz
-end
-#=> {:__aliases__, [], [{:__MODULE__, [], Elixir}, :Bar, :Baz]}
-```
-
-All arguments, except the first, will be atoms.
 
 ### Left to right arrow
 
@@ -222,54 +296,15 @@ end
 #=> {:fn, [], [{:->, [], [[1, 2], 3]}, {:->, [], [[4, 5], 6]}]}
 ```
 
-### Sigils
-
-Sigils start with `~` and are followed by a letter and one of the following pairs:
-
-  * `(` and `)`
-  * `{` and `}`
-  * `[` and `]`
-  * `<` and `>`
-  * `"` and `"`
-  * `'` and `'`
-  * `|` and `|`
-  * `/` and `/`
-
-After closing the pair, any ascii letter can be given as a modifier. Sigils are expressed as calls prefixed with `sigil_` where the first argument is the sigil contents as a string and the second argument is a list of integers as modifiers:
-
-```elixir
-quote do
-  ~r/foo/
-end
-#=> {:sigil_r, [], [{:<<>>, [], ["foo"]}, []]}
-
-quote do
-  ~r/foo/abc
-end
-#=> {:sigil_r, [], [{:<<>>, [], ["foo"]}, 'abc']}
-```
-
-If the sigil letter is in uppercase, no interpolation is allowed in the sigil, otherwise its contents may be dynamic. Compare the quotes below for more information:
-
-```elixir
-quote do
-  ~r/f#{"o"}o/
-end
- 
-quote do
-  ~R/f#{"o"}o/
-end
-```
-
-## Syntax sugar
+## Syntactic sugar
 
 All of the constructs above are part of Elixir's syntax and have their own representation as part of the Elixir AST. This section will discuss the remaining constructs that "desugar" to one of the constructs explored above. In other words, the constructs below can be represented in more than one way in your Elixir code and retain AST equivalence.
 
-### true, false and nil
+### `true`, `false`, and `nil`
 
-`true`, `false` and `nil` are reserved words that are represented by the atoms `:true`, `:false` and `:nil` respectively.
+`true`, `false`, and `nil` are reserved words that are represented by the atoms `:true`, `:false` and `:nil` respectively.
 
-### Integers
+### Integers in other bases and Unicode codepoints
 
 Elixir allows integers to contain `_` to separate digits and provides conveniences to represent integers in other bases:
 
@@ -290,11 +325,11 @@ Elixir allows integers to contain `_` to separate digits and provides convenienc
 #=> 233 (Unicode codepoint)
 ```
 
-All of those constructs are represented as integers in the AST.
+Those constructs exist only at the syntax level. All of the representations above are represented as integers in the AST.
 
 ### Optional parentheses
 
-Elixir provides optional parantheses for non-qualified and qualified calls.
+Elixir provides optional parentheses for non-qualified and qualified calls.
 
 ```elixir
 quote do
@@ -305,17 +340,56 @@ end
 
 The above is treated the same as `sum(1, 2, 3)` by the parser.
 
-The same applies to qualified calls where `Foo.bar(1, 2, 3)` is the same as `Foo.bar 1, 2, 3`. However, keep in mind parentheses are not optional for local calls with no arguments, such as `sum()`. Removing the parentheses for `sum` causes it to be represented as the variable `sum`, changing its semantics.
+The same applies to qualified calls such as `Foo.bar(1, 2, 3)`, which is the same as `Foo.bar 1, 2, 3`. However, keep in mind parentheses are not optional for local calls with no arguments, such as `sum()`. Removing the parentheses for `sum` causes it to be represented as the variable `sum`, changing its semantics.
 
 ### Access
 
-The access syntax in Elixir, such as `foo[:bar]` is treated as a shorcut to the remote call `Access.get(foo, :bar)`:
+The access syntax in Elixir, such as `foo[:bar]`, is treated as a shorcut to the remote call `Access.get(foo, :bar)`:
 
 ```elixir
 quote do
   foo[:bar]
 end
 #=> {{:., [], [Access, :get]}, [], [{:foo, [], Elixir}, :bar]}
+```
+
+### Sigils
+
+Sigils start with `~` and are followed by a letter and one of the following pairs:
+
+  * `(` and `)`
+  * `{` and `}`
+  * `[` and `]`
+  * `<` and `>`
+  * `"` and `"`
+  * `'` and `'`
+  * `|` and `|`
+  * `/` and `/`
+
+After closing the pair, zero or more ascii letters can be given as a modifier. Sigils are expressed as calls prefixed with `sigil_` where the first argument is the sigil contents as a string and the second argument is a list of integers as modifiers:
+
+```elixir
+quote do
+  ~r/foo/
+end
+#=> {:sigil_r, [], [{:<<>>, [], ["foo"]}, []]}
+
+quote do
+  ~m/foo/abc
+end
+#=> {:sigil_m, [], [{:<<>>, [], ["foo"]}, 'abc']}
+```
+
+If the sigil letter is in uppercase, no interpolation is allowed in the sigil, otherwise its contents may be dynamic. Compare the quotes below for more information:
+
+```elixir
+quote do
+  ~r/f#{"o"}o/
+end
+
+quote do
+  ~R/f#{"o"}o/
+end
 ```
 
 ### Keywords
@@ -332,17 +406,17 @@ However Elixir introduces a syntax sugar where the keywords above may be written
 [foo: 1, bar: 2]
 ```
 
-Atoms with foreign characters in their name, such as whitespace, must be wrapped in quotes. This same rule applies to keywords:
+Atoms with foreign characters in their name, such as whitespace, must be wrapped in quotes. This rule applies to keywords as well:
 
 ```elixir
 [{:"foo bar", 1}, {:"bar baz", 2}] == ["foo bar": 1, "bar baz": 2]
 ```
 
-Remember that, because lists and tuples of two elements are quoted literals, then by definition keywords are also literals (in fact, the only reason tuples with two elements are quoted literals is to support keywords as literals).
+Remember that, because lists and two-element tuples are quoted literals, by definition keywords are also literals (in fact, the only reason tuples with two elements are quoted literals is to support keywords as literals).
 
 ### Keywords as last arguments
 
-Elixir also supports a syntax that, if the last argument of a call is a keyword, we can skip the square brackets. This means that:
+Elixir also supports a syntax where if the last argument of a call is a keyword then the square brackets can be skipped. This means that the following:
 
 ```elixir
 if(condition, do: this, else: that)
@@ -360,9 +434,9 @@ which in turn is the same as
 if(condition, [{:do, this}, {:else, that}])
 ```
 
-### Blocks
+### `do`/`end` blocks
 
-The last syntax convenience are `do/end` blocks. `do/end` blocks is equivalent to keywords where the block contents are wrapped in parentheses. For example:
+The last syntax convenience are `do`/`end` blocks. `do`/`end` blocks are equivalent to keywords where the block contents are wrapped in parentheses. For example:
 
 ```elixir
 if true do
@@ -380,7 +454,7 @@ if(true, do: (this), else: (that))
 
 which we have explored in the previous section.
 
-Notice the parentheses are important to support multiple expressions:
+Parentheses are important to support multiple expressions. This:
 
 ```elixir
 if true do
@@ -398,7 +472,14 @@ if(true, do: (
 ))
 ```
 
-Notice `do`/`end` blocks we may introduce other keywords, such as `else` used in `if` above. The supported keywords between `do`/`end` are static and are made of: `after`, `catch`, `else` and `rescue`. You can see them being used in constructs such as `receive`, `try` and others.
+Inside `do`/`end` blocks may introduce other keywords, such as `else` used in the `if` above. The supported keywords between `do`/`end` are static and are:
+
+  * `after`
+  * `catch`
+  * `else`
+  * `rescue`
+
+You can see them being used in constructs such as `receive`, `try`, and others.
 
 ## Conclusion
 
@@ -422,4 +503,4 @@ defmodule(Math, [
 ])
 ```
 
-The mapping between code and data (the underlying AST) is what allows Elixir to implement `defmodule`, `def`, `if` and friends in Elixir itself. Making the constructs available for building the language also accessible to developers who want to extend the language to new domains.
+The mapping between code and data (the underlying AST) is what allows Elixir to implement `defmodule`, `def`, `if`, and friends in Elixir itself. Making the constructs available for building the language also accessible to developers who want to extend the language to new domains.
