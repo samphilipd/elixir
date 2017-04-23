@@ -18,6 +18,24 @@ cd elixir
 make clean test
 ```
 
+To recompile changed erlang files:
+
+```sh
+make compile
+```
+
+If you find yourself seeing errors during the bootstrap compilation step, you may need to reboostrap Elixir:
+
+```sh
+make clean_exbeam compile
+```
+
+Or to rebuild everything without running tests:
+
+```sh
+make clean compile
+```
+
 > Note: if you are running on Windows,
 [this article includes important notes for compiling Elixir from source
 on Windows](https://github.com/elixir-lang/elixir/wiki/Windows).

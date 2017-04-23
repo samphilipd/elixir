@@ -1,7 +1,7 @@
 -module(elixir_module).
 -export([data_table/1, defs_table/1, is_open/1, delete_doc/6,
          compile/4, expand_callback/6, format_error/1,
-         compiler_modules/0]).
+         compiler_modules/0, delete_impl/6]).
 -include("elixir.hrl").
 
 -define(lexical_attr, {elixir, lexical_tracker}).
@@ -36,6 +36,7 @@ delete_doc(#{module := Module}, _, _, _, _, _) ->
   ok.
 
 delete_impl(#{module := Module}, _, _, _, _, _) ->
+  ets:delete(data_table(Module), impl),
   % TODO: What to do here?
   ok.
 
@@ -165,14 +166,13 @@ build(Line, File, Module, Lexical) ->
         _    -> [{elixir_module, delete_doc}]
       end,
 
-  % ImplOnDefinition =
-  %     case elixir_compiler:get_opt(internal) of
-  %       true -> [{'Elixir.Module', check_impl}];
-  %       _    -> [{elixir_module, delete_impl}]
-  %     end,
+  ImplOnDefinition =
+      case elixir_compiler:get_opt(internal) of
+        true -> [{elixir_module, delete_impl}];
+        _    -> [{'Elixir.Module', check_impl}]
+      end,
 
-  % OnDefinition = ImplOnDefinition ++ DocsOnDefinition,
-  OnDefinition = DocsOnDefinition,
+  OnDefinition = ImplOnDefinition ++ DocsOnDefinition,
 
   ets:insert(Data, [
     % {Key, Value, Accumulate?, UnreadLine}

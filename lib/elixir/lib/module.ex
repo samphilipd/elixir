@@ -1109,11 +1109,18 @@ defmodule Module do
   @doc false
   # Used internally to check impl usage.
   # This function is private and must be used only internally.
-  def check_impl(_env, _kind, _name, _args, _guards, _body) do
-    # :elixir_errors.warn env.module
-    # :elixir_errors.warn data_table_for(module)
-    # :elixir_errors.warn length(args)
-    # :elixir_errors.warn {name, arity}
+  def check_impl(env, kind, name, args, guards, body) do
+    IO.puts "HERE MOTHERFUCKER"
+    # for {arg, val} <- binding() do
+    #   IO.puts "#{arg} = #{inspect val}"
+    # end
+    # IO.puts env.module
+    # IO.puts data_table_for(module)
+    # IO.puts length(args)
+    # IO.puts {name, arity}
+    module = env.module
+    {_line_no, behaviour} = get_attribute(module, :impl)
+    IO.inspect behaviour.behaviour_info
 
     # {line, doc} = get_doc_info(table, env)
 
@@ -1235,6 +1242,8 @@ defmodule Module do
   defp preprocess_attribute(:impl, value) do
     case value do
       {line, module} when is_integer(line) and is_atom(module) ->
+        # Attempt to compile behaviour but ignore failure (will warn later)
+        # TODO: Should we hard fail here? Because it may fail anyway later in the `check_impl` stage
         _ = Code.ensure_compiled(module)
         value
       {line, other} when is_integer(line) ->

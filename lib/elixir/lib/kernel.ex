@@ -2476,7 +2476,7 @@ defmodule Kernel do
         quote do: Module.put_attribute(__MODULE__, unquote(name), unquote(arg),
                                        unquote(stack), unquote(line))
 
-      name in [:moduledoc, :typedoc, :doc, :impl] ->
+      :lists.member(name, [:moduledoc, :typedoc, :doc, :impl]) ->
         {stack, _} = :elixir_quote.escape(env_stacktrace(env), false)
         arg = {env.line, arg}
         quote do: Module.put_attribute(__MODULE__, unquote(name), unquote(arg),
@@ -2492,7 +2492,7 @@ defmodule Kernel do
   defp do_at(args, _meta, name, function?, env) when is_atom(args) or args == [] do
     stack = env_stacktrace(env)
 
-    includes_line_no? = name in [:moduledoc, :typedoc, :doc, :impl]
+    includes_line_no? = :lists.member(name, [:moduledoc, :typedoc, :doc, :impl])
 
     case function? do
       true ->

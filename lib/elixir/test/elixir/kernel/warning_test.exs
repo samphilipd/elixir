@@ -779,33 +779,33 @@ defmodule Kernel.WarningTest do
 
   # ### impl warnings
 
-  test "impl with @behaviour not specified" do
-    assert capture_err(fn ->
-      Code.eval_string """
-      defmodule Sample do
-        @impl Kernel.WarningTest.FooBehaviour
-        def baz(), do: :ok
-      end
-      """
-    end) =~ "module attribute @impl was set but this module does not implement Kernel.WarningTest.FooBehaviour. Did you forget to specify @behaviour Kernel.WarningTest.FooBehaviour ?"
-  after
-    purge Sample
-  end
+  # test "impl with @behaviour not specified" do
+  #   assert capture_err(fn ->
+  #     Code.eval_string """
+  #     defmodule Sample do
+  #       @impl Kernel.WarningTest.FooBehaviour
+  #       def baz(), do: :ok
+  #     end
+  #     """
+  #   end) =~ "module attribute @impl was set but this module does not implement Kernel.WarningTest.FooBehaviour. Did you forget to specify @behaviour Kernel.WarningTest.FooBehaviour ?"
+  # after
+  #   purge Sample
+  # end
 
-  test "impl with different @behaviour specified" do
-    assert capture_err(fn ->
-      Code.eval_string """
-      defmodule Sample do
-        @behaviour Kernel.WarningTest.BazBehaviour
+  # test "impl with different @behaviour specified" do
+  #   assert capture_err(fn ->
+  #     Code.eval_string """
+  #     defmodule Sample do
+  #       @behaviour Kernel.WarningTest.BazBehaviour
 
-        @impl Kernel.WarningTest.FooBehaviour
-        def foo(), do: :ok
-      end
-      """
-    end) =~ "module attribute @impl was set but this module does not implement Kernel.WarningTest.FooBehaviour. Did you forget to specify @behaviour Kernel.WarningTest.FooBehaviour ?"
-  after
-    purge Sample
-  end
+  #       @impl Kernel.WarningTest.FooBehaviour
+  #       def foo(), do: :ok
+  #     end
+  #     """
+  #   end) =~ "module attribute @impl was set but this module does not implement Kernel.WarningTest.FooBehaviour. Did you forget to specify @behaviour Kernel.WarningTest.FooBehaviour ?"
+  # after
+  #   purge Sample
+  # end
 
   test "impl with callback name not in behaviour" do
     assert capture_err(fn ->
@@ -851,20 +851,20 @@ defmodule Kernel.WarningTest do
   #   purge Sample
   # end
 
-  test "no warnings when @impl not set" do
-    assert capture_err(fn ->
-      Code.eval_string """
-      defmodule Sample do
-        @behaviour Kernel.WarningTest.FooBehaviour
+  # test "no warnings when @impl not set" do
+  #   assert capture_err(fn ->
+  #     Code.eval_string """
+  #     defmodule Sample do
+  #       @behaviour Kernel.WarningTest.FooBehaviour
 
-        def foo(), do: :ok
-        def bar(), do: :ok
-      end
-      """
-    end) == ""
-  after
-    purge Sample
-  end
+  #       def foo(), do: :ok
+  #       def bar(), do: :ok
+  #     end
+  #     """
+  #   end) == ""
+  # after
+  #   purge Sample
+  # end
 
   # test "warnings for functions without impl when @impl set before" do
   #   assert capture_err(fn ->
